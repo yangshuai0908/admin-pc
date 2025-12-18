@@ -1,0 +1,56 @@
+:root[data-theme='light'] {
+  --page-bg: #f8fafc;
+  --page-card-bg: #ffffff;
+  --page-border-color: #e2e8f0;
+  --sidebar-bg: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  --sidebar-solid-bg: #1e293b;
+  --sidebar-text: #e2e8f0;
+  --sidebar-text-active: #ffffff;
+  --sidebar-logo-text: #ffffff;
+  --sidebar-hover-bg: linear-gradient(135deg, #334155 0%, #475569 100%);
+  --sidebar-solid-hover-bg: #334155;
+  --primary-color: #3b82f6;
+  --accent-color: #60a5fa;
+}
+
+:root[data-theme='dark'] {
+  --page-bg: #0f172a;
+  --page-card-bg: #1e293b;
+  --page-border-color: #334155;
+  --sidebar-bg: linear-gradient(135deg, #020617 0%, #0f172a 100%);
+  --sidebar-solid-bg: #020617;
+  --sidebar-text: #d1d5db;
+  --sidebar-text-active: #ffffff;
+  --sidebar-logo-text: #ffffff;
+  --sidebar-hover-bg: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  --sidebar-solid-hover-bg: #0f172a;
+  --primary-color: #60a5fa;
+  --accent-color: #93c5fd;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: var(--page-bg);
+}
+
+#app {
+  height: 100vh;
+}
+
+// 覆盖 Element Plus 一些基础样式，让卡片更现代
+.el-card {
+  border-radius: 12px !important;
+  border-color: var(--page-border-color) !important;
+}
+
+.el-header {
+  border-bottom: 1px solid var(--page-border-color);
+  background-color: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+[data-theme='dark'] .el-header {
+  background-color: rgba(15, 23, 42, 0.7);
+}
+

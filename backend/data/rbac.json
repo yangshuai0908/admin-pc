@@ -1,0 +1,77 @@
+{
+  "roles": [
+    {
+      "id": "admin",
+      "name": "管理员",
+      "permissions": [
+        "page:dashboard",
+        "page:user",
+        "page:menu-manage",
+        "btn:user:add",
+        "btn:user:edit",
+        "btn:user:delete"
+      ]
+    },
+    {
+      "id": "user",
+      "name": "普通用户",
+      "permissions": [
+        "page:dashboard"
+      ]
+    }
+  ],
+  "users": [
+    { "id": 1, "username": "admin", "password": "123456", "roleId": "admin" },
+    { "id": 2, "username": "user", "password": "123456", "roleId": "user" }
+  ],
+  "menus": [
+    {
+      "id": 1,
+      "title": "仪表盘",
+      "icon": "Odometer",
+      "path": "/dashboard",
+      "component": "Dashboard",
+      "permission": "page:dashboard",
+      "children": []
+    },
+    {
+      "id": 2,
+      "title": "用户管理",
+      "icon": "User",
+      "path": "/user",
+      "component": "User",
+      "permission": "page:user",
+      "children": [
+        {
+          "id": 21,
+          "title": "新增按钮",
+          "type": "button",
+          "permission": "btn:user:add"
+        },
+        {
+          "id": 22,
+          "title": "编辑按钮",
+          "type": "button",
+          "permission": "btn:user:edit"
+        },
+        {
+          "id": 23,
+          "title": "删除按钮",
+          "type": "button",
+          "permission": "btn:user:delete"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "菜单管理",
+      "icon": "Menu",
+      "path": "/menu-manage",
+      "component": "MenuManage",
+      "permission": "page:menu-manage",
+      "children": []
+    }
+  ]
+}
+
+
