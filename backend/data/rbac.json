@@ -1,25 +1,75 @@
 {
   "roles": [
     {
-      "id": "admin",
+      "id": "1",
       "name": "管理员",
       "permissions": [
         "page:dashboard",
+        "page:personal",
         "page:user",
-        "page:menu-manage",
         "page:role",
         "page:menu",
-        "page:personal",
-        "page:system"
-      ]
+        "page:system",
+        "user:add",
+        "user:edit",
+        "user:delete",
+        "user:view",
+        "role:add",
+        "role:edit",
+        "role:delete",
+        "role:view",
+        "role:assign",
+        "menu:add",
+        "menu:edit",
+        "menu:delete",
+        "menu:view",
+        "menu:add",
+        "menu:delete",
+        "personal:edit",
+        "personal:view",
+        "dashboard:view"
+      ],
+      "status": "enabled"
     },
     {
-      "id": "user",
+      "id": "2",
       "name": "普通用户",
       "permissions": [
         "page:dashboard",
+        "page:personal",
+        "personal_operations",
+        "personal:edit",
+        "personal:view",
+        "dashboard_operations",
+        "dashboard:view"
+      ],
+      "description": "普通用户",
+      "status": "enabled"
+    },
+    {
+      "id": "3",
+      "name": "测试",
+      "permissions": [
+        "page:dashboard",
+        "personal_operations",
+        "personal:edit",
+        "personal:view",
+        "dashboard_operations",
+        "dashboard:view"
+      ],
+      "description": "测试1221",
+      "status": "enabled"
+    },
+    {
+      "id": "4",
+      "name": "访客",
+      "description": "访客",
+      "permissions": [
+        "page:dashboard",
         "page:personal"
-      ]
+      ],
+      "createTime": "2025/12/19",
+      "status": "enabled"
     }
   ],
   "users": [
@@ -27,13 +77,19 @@
       "id": 1,
       "username": "admin",
       "password": "123456",
-      "roleId": "admin"
+      "roleId": "1"
     },
     {
       "id": 2,
       "username": "user",
       "password": "123456",
-      "roleId": "user"
+      "roleId": "2"
+    },
+    {
+      "id": "3",
+      "username": "test",
+      "password": "123456",
+      "roleId": "4"
     }
   ],
   "menus": [
@@ -83,11 +139,11 @@
       ]
     },
     {
-      "id": "1766124319661",
+      "id": "6",
       "title": "个人资料",
-      "path": "personal",
+      "path": "/personal",
       "icon": "Folder",
-      "component": "Personal ",
+      "component": "Personal",
       "permission": "page:personal",
       "type": "menu"
     }

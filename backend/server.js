@@ -72,6 +72,10 @@ app.post('/api/login', (req, res) => {
     return res.status(401).json({ message: '用户名或密码错误' });
   }
   const role = getRoleById(user.roleId);
+  // 检查角色是否存在且启用
+  if (!role || role.status !== 'enabled') {
+    return res.status(401).json({ message: '账户角色已被禁用，无法登录' });
+  }
   const token = jwt.sign(
     { id: user.id, username: user.username, roleId: user.roleId, permissions: role.permissions },
     JWT_SECRET,
@@ -130,14 +134,14 @@ app.post('/api/check-permission', authMiddleware, (req, res) => {
 
 // 管理端：获取 / 更新 RBAC 配置（仅管理员权限，可根据需要调整）
 app.get('/api/admin/rbac', authMiddleware, (req, res) => {
-  if (!req.user.permissions.includes('page:menu-manage')) {
+  if (!req.user.permissions.includes('menu:edit')) {
     return res.status(403).json({ message: '无菜单管理权限' });
   }
   res.json(db);
 });
 
 app.post('/api/admin/rbac', authMiddleware, (req, res) => {
-  if (!req.user.permissions.includes('page:menu-manage')) {
+  if (!req.user.permissions.includes('menu:edit')) {
     return res.status(403).json({ message: '无菜单管理权限' });
   }
   const { roles, menus } = req.body;
@@ -149,20 +153,69 @@ app.post('/api/admin/rbac', authMiddleware, (req, res) => {
 
 // 菜单管理相关API
 app.get('/api/admin/menus', authMiddleware, (req, res) => {
-  if (!req.user.permissions.includes('page:menu-manage')) {
+  if (!req.user.permissions.includes('menu:edit')) {
     return res.status(403).json({ message: '无菜单管理权限' });
   }
   res.json({ menus: db.menus });
 });
 
+// 获取单个菜单详情
+app.get('/api/admin/menus/:id', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('menu:edit')) {
+    return res.status(403).json({ message: '无菜单管理权限' });
+  }
+  
+  const { id } = req.params;
+  
+  const findMenu = (menus, id) => {
+    for (let menu of menus) {
+      if (menu.id.toString() === id.toString()) {
+        return menu;
+      }
+      if (menu.children) {
+        const found = findMenu(menu.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+  
+  const menu = findMenu(db.menus, id);
+  if (menu) {
+    res.json(menu);
+  } else {
+    res.status(404).json({ message: '菜单不存在' });
+  }
+});
+
+// 生成下一个可用的菜单ID
+const getNextMenuId = (menus) => {
+  const extractIds = (menuList) => {
+    let ids = [];
+    menuList.forEach(menu => {
+      if (menu.id && !isNaN(parseInt(menu.id))) {
+        ids.push(parseInt(menu.id));
+      }
+      if (menu.children && menu.children.length > 0) {
+        ids = ids.concat(extractIds(menu.children));
+      }
+    });
+    return ids;
+  };
+  
+  const existingIds = extractIds(menus);
+  const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+  return (maxId + 1).toString();
+};
+
 app.post('/api/admin/menus', authMiddleware, (req, res) => {
-  if (!req.user.permissions.includes('page:menu-manage')) {
+  if (!req.user.permissions.includes('menu:edit')) {
     return res.status(403).json({ message: '无菜单管理权限' });
   }
   
   const { title, path, icon, component, permission, type, parentId } = req.body;
   const newMenu = {
-    id: Date.now().toString(),
+    id: getNextMenuId(db.menus),
     title,
     path: path || '',
     icon: icon || '',
@@ -195,7 +248,7 @@ app.post('/api/admin/menus', authMiddleware, (req, res) => {
 });
 
 app.put('/api/admin/menus/:id', authMiddleware, (req, res) => {
-  if (!req.user.permissions.includes('page:menu-manage')) {
+  if (!req.user.permissions.includes('menu:edit')) {
     return res.status(403).json({ message: '无菜单管理权限' });
   }
   
@@ -204,7 +257,7 @@ app.put('/api/admin/menus/:id', authMiddleware, (req, res) => {
   
   const updateMenu = (menus, id, updateData) => {
     for (let menu of menus) {
-      if (menu.id === id) {
+      if (menu.id.toString() === id.toString()) {
         Object.assign(menu, updateData);
         return true;
       }
@@ -225,7 +278,7 @@ app.put('/api/admin/menus/:id', authMiddleware, (req, res) => {
 });
 
 app.delete('/api/admin/menus/:id', authMiddleware, (req, res) => {
-  if (!req.user.permissions.includes('page:menu-manage')) {
+  if (!req.user.permissions.includes('menu:edit')) {
     return res.status(403).json({ message: '无菜单管理权限' });
   }
   
@@ -233,7 +286,7 @@ app.delete('/api/admin/menus/:id', authMiddleware, (req, res) => {
   
   const deleteMenu = (menus, id) => {
     for (let i = 0; i < menus.length; i++) {
-      if (menus[i].id === id) {
+      if (menus[i].id.toString() === id.toString()) {
         menus.splice(i, 1);
         return true;
       }
@@ -253,7 +306,422 @@ app.delete('/api/admin/menus/:id', authMiddleware, (req, res) => {
   }
 });
 
+// 角色管理相关API
+app.get('/api/admin/roles', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('page:role')) {
+    return res.status(403).json({ message: '无角色管理权限' });
+  }
+  res.json({ roles: db.roles });
+});
 
+// 获取下一个可用的角色ID
+function getNextRoleId() {
+  // 过滤出非admin的角色并提取数字部分
+  const userRoleIds = db.roles
+    .filter(role => role.id !== 'admin')
+    .map(role => {
+      // 尝试解析ID中的数字部分
+      const match = role.id.match(/^(\d+)$/);
+      return match ? parseInt(match[1]) : 0;
+    })
+    .filter(id => !isNaN(id));
+  
+  // 如果没有用户角色，从1开始
+  if (userRoleIds.length === 0) {
+    return '1';
+  }
+  
+  // 找到最大ID并加1
+  const maxId = Math.max(...userRoleIds);
+  return (maxId + 1).toString();
+}
+
+app.post('/api/admin/roles', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('role:add')) {
+    return res.status(403).json({ message: '无角色新增权限' });
+  }
+  
+  const { id, name, description, permissions } = req.body;
+  
+  // 检查角色ID是否已存在
+  const roleId = id || getNextRoleId();
+  const existingRole = db.roles.find(role => role.id === roleId);
+  if (existingRole) {
+    return res.status(400).json({ message: '角色ID已存在' });
+  }
+  
+  const newRole = {
+    id: roleId,
+    name,
+    description: description || '',
+    permissions: permissions || [],
+    createTime: new Date().toLocaleDateString(),
+    status: 'enabled'
+  };
+  
+  db.roles.push(newRole);
+  saveDb();
+  res.json({ message: '角色创建成功', role: newRole });
+});
+
+app.put('/api/admin/roles/:id', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('role:edit')) {
+    return res.status(403).json({ message: '无角色编辑权限' });
+  }
+  
+  const { id } = req.params;
+  const { name, description, permissions, status } = req.body;
+  
+  const roleIndex = db.roles.findIndex(role => role.id.toString() === id.toString());
+  if (roleIndex === -1) {
+    return res.status(404).json({ message: '角色不存在' });
+  }
+  
+  // 防止编辑admin角色的基本信息
+  if (id === 'admin' && (name !== '管理员' || description)) {
+    return res.status(400).json({ message: '不能修改管理员角色的基本信息' });
+  }
+  
+  // 检查是否要禁用角色，且该角色是最后一个管理员角色
+  if (status === 'disabled' && id === '1') {
+    // 查找其他启用的管理员角色
+    const otherEnabledAdminRoles = db.roles.filter((role, index) => 
+      role.id === '1' && index !== roleIndex && role.status === 'enabled'
+    );
+    
+    // 如果没有其他启用的管理员角色，则拒绝禁用
+    if (otherEnabledAdminRoles.length === 0) {
+      return res.status(400).json({ message: '系统必须至少保留一个启用的管理员角色' });
+    }
+  }
+  
+  // 检查角色名称是否已被其他角色使用
+  if (name) {
+    const existingRole = db.roles.find((r, index) => r.name === name && index !== roleIndex);
+    if (existingRole) {
+      return res.status(400).json({ message: '角色名称已存在' });
+    }
+  }
+  
+  // 更新角色信息
+  if (name) db.roles[roleIndex].name = name;
+  if (description !== undefined) db.roles[roleIndex].description = description;
+  if (Array.isArray(permissions)) db.roles[roleIndex].permissions = permissions;
+  if (status) db.roles[roleIndex].status = status;
+  
+  saveDb();
+  res.json({ message: '角色更新成功', role: db.roles[roleIndex] });
+});
+
+app.delete('/api/admin/roles/:id', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('role:delete')) {
+    return res.status(403).json({ message: '无角色删除权限' });
+  }
+  
+  const { id } = req.params;
+  
+  // 防止删除admin角色
+  if (id === 'admin') {
+    return res.status(400).json({ message: '不能删除管理员角色' });
+  }
+  
+  const roleIndex = db.roles.findIndex(role => role.id.toString() === id.toString());
+  
+  if (roleIndex === -1) {
+    return res.status(404).json({ message: '角色不存在' });
+  }
+  
+  // 检查是否有用户正在使用此角色
+  const usersWithThisRole = db.users.filter(user => user.roleId === id);
+  if (usersWithThisRole.length > 0) {
+    return res.status(400).json({ message: '有用户正在使用此角色，不能删除' });
+  }
+  
+  db.roles.splice(roleIndex, 1);
+  saveDb();
+  res.json({ message: '角色删除成功' });
+});
+
+// 切换角色状态
+app.put('/api/admin/roles/:id/status', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('role:edit')) {
+    return res.status(403).json({ message: '无角色编辑权限' });
+  }
+  
+  const { id } = req.params;
+  const { status } = req.body;
+  
+  const roleIndex = db.roles.findIndex(role => role.id.toString() === id.toString());
+  if (roleIndex === -1) {
+    return res.status(404).json({ message: '角色不存在' });
+  }
+  
+  // 防止禁用admin角色
+  if (id === 'admin' && status === 'disabled') {
+    return res.status(400).json({ message: '不能禁用管理员角色' });
+  }
+  
+  // 检查是否要禁用角色，且该角色是最后一个启用的管理员角色
+  if (status === 'disabled' && id === '1') {
+    // 查找其他启用的管理员角色
+    const otherEnabledAdminRoles = db.roles.filter((role, index) => 
+      role.id === '1' && index !== roleIndex && role.status === 'enabled'
+    );
+    
+    // 如果没有其他启用的管理员角色，则拒绝禁用
+    if (otherEnabledAdminRoles.length === 0) {
+      return res.status(400).json({ message: '系统必须至少保留一个启用的管理员角色' });
+    }
+  }
+  
+  db.roles[roleIndex].status = status;
+  saveDb();
+  res.json({ message: '角色状态更新成功', role: db.roles[roleIndex] });
+});
+
+// 获取权限树数据（用于权限配置）
+app.get('/api/admin/permissions', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('page:role')) {
+    return res.status(403).json({ message: '无角色管理权限' });
+  }
+  
+  // 构建页面权限树数据
+  const pagePermissions = db.menus.map(menu => {
+    // 处理有子菜单的情况
+    if (menu.children && menu.children.length > 0) {
+      return {
+        id: menu.permission,
+        title: menu.title,
+        children: menu.children.map(child => ({
+          id: child.permission,
+          title: child.title
+        }))
+      };
+    } else {
+      return {
+        id: menu.permission,
+        title: menu.title
+      };
+    }
+  });
+  
+  // 构建按钮权限树数据
+  const buttonPermissions = [
+    {
+      id: 'user_operations',
+      title: '用户管理操作',
+      children: [
+        { id: 'user:add', title: '新增用户' },
+        { id: 'user:edit', title: '编辑用户' },
+        { id: 'user:delete', title: '删除用户' },
+        { id: 'user:view', title: '查看用户' }
+      ]
+    },
+    {
+      id: 'role_operations',
+      title: '角色管理操作',
+      children: [
+        { id: 'role:add', title: '新增角色' },
+        { id: 'role:edit', title: '编辑角色' },
+        { id: 'role:delete', title: '删除角色' },
+        { id: 'role:assign', title: '分配权限' },
+        { id: 'role:view', title: '查看角色' }
+      ]
+    },
+    {
+      id: 'menu_operations',
+      title: '菜单管理操作',
+      children: [
+        { id: 'menu:add', title: '新增菜单' },
+        { id: 'menu:edit', title: '编辑菜单' },
+        { id: 'menu:delete', title: '删除菜单' },
+        { id: 'menu:view', title: '查看菜单' }
+      ]
+    },
+    {
+      id: 'personal_operations',
+      title: '个人资料操作',
+      children: [
+        { id: 'personal:edit', title: '编辑个人资料' },
+        { id: 'personal:view', title: '查看个人资料' }
+      ]
+    },
+    {
+      id: 'dashboard_operations',
+      title: '仪表盘操作',
+      children: [
+        { id: 'dashboard:view', title: '查看仪表盘' }
+      ]
+    }
+  ];
+  
+  const permissionTree = [
+    {
+      id: 'page',
+      title: '页面权限',
+      children: pagePermissions
+    },
+    {
+      id: 'operation',
+      title: '按钮权限',
+      children: buttonPermissions
+    }
+  ];
+  
+  res.json(permissionTree);
+});
+
+// 用户管理相关API
+app.get('/api/admin/users', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('page:user')) {
+    return res.status(403).json({ message: '无用户管理权限' });
+  }
+  
+  const usersWithRoles = db.users.map(user => {
+    const role = getRoleById(user.roleId);
+    return {
+      ...user,
+      roleName: role ? role.name : '未知角色',
+      roleId: user.roleId
+    };
+  });
+  
+  res.json({ users: usersWithRoles });
+});
+
+// 获取下一个可用的用户ID
+function getNextUserId() {
+  // 提取所有用户的数字ID
+  const userIds = db.users
+    .map(user => {
+      // 尝试解析ID中的数字部分
+      const match = user.id.toString().match(/^(\d+)$/);
+      return match ? parseInt(match[1]) : 0;
+    })
+    .filter(id => !isNaN(id));
+  
+  // 如果没有用户，从1开始
+  if (userIds.length === 0) {
+    return '1';
+  }
+  
+  // 找到最大ID并加1
+  const maxId = Math.max(...userIds);
+  return (maxId + 1).toString();
+}
+
+app.post('/api/admin/users', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('user:add')) {
+    return res.status(403).json({ message: '无新增用户权限' });
+  }
+  
+  const { username, password, roleId } = req.body;
+  
+  // 检查用户名是否已存在
+  if (db.users.find(u => u.username === username)) {
+    return res.status(400).json({ message: '用户名已存在' });
+  }
+  
+  // 检查角色是否存在
+  const role = getRoleById(roleId);
+  if (!role) {
+    return res.status(400).json({ message: '角色不存在' });
+  }
+  
+  const newUser = {
+    id: getNextUserId(),
+    username,
+    password,
+    roleId
+  };
+  
+  db.users.push(newUser);
+  saveDb();
+  res.json({ message: '用户创建成功', user: newUser });
+});
+
+app.put('/api/admin/users/:id', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('user:edit')) {
+    return res.status(403).json({ message: '无编辑用户权限' });
+  }
+  
+  const { id } = req.params;
+  const { username, password, roleId } = req.body;
+  
+  const userIndex = db.users.findIndex(user => user.id.toString() === id.toString());
+  if (userIndex === -1) {
+    return res.status(404).json({ message: '用户不存在' });
+  }
+  
+  // 检查是否要修改角色，且该用户是最后一个管理员用户
+  if (roleId && db.users[userIndex].roleId === '1') {
+    // 查找其他管理员用户
+    const otherAdminUsers = db.users.filter((user, index) => 
+      user.roleId === '1' && index !== userIndex
+    );
+    
+    // 如果没有其他管理员用户，且要将此用户改为非管理员角色，则拒绝操作
+    if (otherAdminUsers.length === 0 && roleId !== '1') {
+      return res.status(400).json({ message: '系统必须至少保留一个管理员用户' });
+    }
+  }
+  
+  // 检查用户名是否已被其他用户使用
+  if (username && db.users.find((u, index) => u.username === username && index !== userIndex)) {
+    return res.status(400).json({ message: '用户名已存在' });
+  }
+  
+  // 检查角色是否存在
+  if (roleId) {
+    const role = getRoleById(roleId);
+    if (!role) {
+      return res.status(400).json({ message: '角色不存在' });
+    }
+  }
+  
+  // 更新用户信息
+  if (username) db.users[userIndex].username = username;
+  if (password) db.users[userIndex].password = password;
+  if (roleId) db.users[userIndex].roleId = roleId;
+  
+  saveDb();
+  res.json({ message: '用户更新成功', user: db.users[userIndex] });
+});
+
+app.delete('/api/admin/users/:id', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('user:delete')) {
+    return res.status(403).json({ message: '无删除用户权限' });
+  }
+  
+  const { id } = req.params;
+  const userIndex = db.users.findIndex(user => user.id.toString() === id.toString());
+  
+  if (userIndex === -1) {
+    return res.status(404).json({ message: '用户不存在' });
+  }
+  
+  // 检查是否是管理员用户
+  if (db.users[userIndex].roleId === '1') {
+    // 查找其他管理员用户
+    const otherAdminUsers = db.users.filter((user, index) => 
+      user.roleId === '1' && index !== userIndex
+    );
+    
+    // 如果没有其他管理员用户，则拒绝删除
+    if (otherAdminUsers.length === 0) {
+      return res.status(400).json({ message: '系统必须至少保留一个管理员用户' });
+    }
+  }
+  
+  // 防止删除admin用户
+  if (db.users[userIndex].username === 'admin') {
+    return res.status(400).json({ message: '不能删除管理员用户' });
+  }
+  
+  db.users.splice(userIndex, 1);
+  saveDb();
+  res.json({ message: '用户删除成功' });
+});
 
 app.listen(PORT, () => {
   console.log(`RBAC backend server running at http://localhost:${PORT}`);

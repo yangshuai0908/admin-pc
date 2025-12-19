@@ -203,7 +203,7 @@ onMounted(() => {
         <div class="card-header">
           <span>🎨 可视化菜单管理</span>
           <div class="header-actions">
-            <el-button type="primary" size="small" @click="handleAddMenu()">
+            <el-button type="primary" size="small" @click="handleAddMenu()" v-if="userStore.hasPermission('menu:add')">
               <el-icon><Plus /></el-icon>
               添加顶级菜单
             </el-button>
@@ -234,7 +234,7 @@ onMounted(() => {
             </div>
             <div class="node-actions">
               <el-button
-                v-if="data.type !== 'button'"
+                v-if="data.type !== 'button' && userStore.hasPermission('menu:add')"
                 size="small"
                 type="primary"
                 @click="handleAddMenu(data)"
@@ -244,6 +244,7 @@ onMounted(() => {
               <el-button
                 size="small"
                 @click="handleEdit(data)"
+                v-if="userStore.hasPermission('menu:edit')"
               >
                 编辑
               </el-button>
@@ -251,6 +252,7 @@ onMounted(() => {
                 size="small"
                 type="danger"
                 @click="handleDelete(data)"
+                v-if="userStore.hasPermission('menu:delete')"
               >
                 删除
               </el-button>

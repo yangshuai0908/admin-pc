@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>角色管理</span>
-          <el-button type="primary" @click="handleAdd">新增角色</el-button>
+          <el-button type="primary" @click="handleAdd" v-if="userStore.hasPermission('role:add')">新增角色</el-button>
         </div>
       </template>
 
@@ -21,15 +21,26 @@
 
       <!-- 数据表格 -->
       <el-table :data="tableData" border style="width: 100%">
-        <el-table-column prop="id" label="角色ID" width="80" />
+        <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="角色名称" />
         <el-table-column prop="description" label="角色描述" />
+        <el-table-column prop="status" label="状态" width="100">
+          <template #default="scope">
+            <el-switch
+              v-model="scope.row.status"
+              active-value="enabled"
+              inactive-value="disabled"
+              @change="handleStatusChange(scope.row)"
+              :disabled="scope.row.id === 'admin'"
+            />
+          </template>
+        </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="180" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="scope">
-            <el-button type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
-            <el-button type="info" size="small" @click="handlePermissions(scope.row)">权限</el-button>
+            <el-button type="primary" size="small" @click="handleEdit(scope.row)" v-if="userStore.hasPermission('role:edit')">编辑</el-button>
+            <el-button type="danger" size="small" @click="handleDelete(scope.row)" v-if="userStore.hasPermission('role:delete')">删除</el-button>
+            <el-button type="info" size="small" @click="handlePermissions(scope.row)" v-if="userStore.hasPermission('role:assign')">权限</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -69,6 +80,12 @@
             :rows="3"
             placeholder="请输入角色描述"
           />
+        </el-form-item>
+        <el-form-item label="角色状态">
+          <el-radio-group v-model="form.status">
+            <el-radio label="enabled">启用</el-radio>
+            <el-radio label="disabled">禁用</el-radio>
+          </el-radio-group>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -114,6 +131,10 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import axios from '../utils/request'
+import { useUserStore } from '../stores/user'
+
+const userStore = useUserStore()
 
 // 搜索表单
 const searchForm = reactive({
@@ -131,9 +152,9 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const formRef = ref()
 const form = reactive({
-  id: '',
   name: '',
-  description: ''
+  description: '',
+  status: ''
 })
 
 // 表单验证规则
@@ -153,51 +174,44 @@ const checkedPermissions = ref([])
 // 加载角色列表
 const loadRoleList = async () => {
   try {
-    // 模拟数据
-    const mockData = [
-      { id: 1, name: '管理员', description: '系统管理员，拥有所有权限', createTime: '2024-01-01 10:00:00' },
-      { id: 2, name: '普通用户', description: '普通用户，基础权限', createTime: '2024-01-02 10:00:00' },
-      { id: 3, name: '访客', description: '访客用户，只读权限', createTime: '2024-01-03 10:00:00' }
-    ]
+    // 添加token调试信息
     
-    tableData.value = mockData
-    total.value = mockData.length
+    const response = await axios.get('/api/admin/roles')
+    
+    if (!response || !response.roles) {
+      throw new Error('API返回数据格式错误')
+    }
+    
+    const roles = response.roles.map(role => ({
+      id: role.id,
+      name: role.name,
+      description: role.description || `${role.name} - ${role.permissions.length}个权限`,
+      createTime: role.createTime || new Date().toLocaleDateString(),
+      status: role.status || 'enabled',
+      permissions: role.permissions
+    }))
+    
+    tableData.value = roles
+    total.value = roles.length
   } catch (error) {
-    ElMessage.error('获取角色列表失败')
+    console.error('获取角色列表失败:', error)
+    if (error.response?.status === 403) {
+      ElMessage.error('无角色管理权限')
+    } else if (error.response?.status === 401) {
+      ElMessage.error('请先登录')
+    } else {
+      ElMessage.error('获取角色列表失败')
+    }
   }
 }
 
 // 加载权限树数据
 const loadPermissionTree = async () => {
   try {
-    // 模拟权限树数据
-    permissionTreeData.value = [
-      {
-        id: 'page',
-        title: '页面权限',
-        children: [
-          { id: 'page:dashboard', title: '仪表盘' },
-          { id: 'page:user', title: '用户管理' },
-          { id: 'page:role', title: '角色管理' },
-          { id: 'page:menu', title: '菜单管理' },
-          { id: 'page:personal', title: '个人中心' },
-          { id: 'page:system', title: '系统管理' }
-        ]
-      },
-      {
-        id: 'operation',
-        title: '操作权限',
-        children: [
-          { id: 'user:add', title: '新增用户' },
-          { id: 'user:edit', title: '编辑用户' },
-          { id: 'user:delete', title: '删除用户' },
-          { id: 'role:add', title: '新增角色' },
-          { id: 'role:edit', title: '编辑角色' },
-          { id: 'role:delete', title: '删除角色' }
-        ]
-      }
-    ]
+    const response = await axios.get('/api/admin/permissions')
+    permissionTreeData.value = response
   } catch (error) {
+    console.error('获取权限数据失败:', error)
     ElMessage.error('获取权限数据失败')
   }
 }
@@ -217,18 +231,20 @@ const handleReset = () => {
 // 新增
 const handleAdd = () => {
   dialogTitle.value = '新增角色'
-  form.id = ''
   form.name = ''
   form.description = ''
+  form.status = 'enabled'
   dialogVisible.value = true
 }
 
 // 编辑
 const handleEdit = (row) => {
   dialogTitle.value = '编辑角色'
-  form.id = row.id
+  // 保存角色ID但不在表单中显示
+  form.originalId = row.id
   form.name = row.name
-  form.description = row.description
+  form.description = row.description || ''
+  form.status = row.status || 'enabled'
   dialogVisible.value = true
 }
 
@@ -241,23 +257,47 @@ const handleDelete = async (row) => {
       type: 'warning'
     })
     
+    await axios.delete(`/api/admin/roles/${row.id}`)
     ElMessage.success('删除成功')
     loadRoleList()
-  } catch {
-    // 用户取消删除
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除角色失败:', error)
+      // 根据错误信息显示具体的错误原因
+      if (error.response && error.response.data && error.response.data.message) {
+        ElMessage.error(error.response.data.message)
+      } else {
+        ElMessage.error('删除角色失败')
+      }
+    }
   }
 }
 
 // 权限配置
 const handlePermissions = (row) => {
   currentRole.value = { ...row }
-  // 模拟当前角色已有权限
-  if (row.id === 1) {
-    checkedPermissions.value = ['page:dashboard', 'page:user', 'page:role', 'page:menu', 'page:personal', 'page:system']
-  } else {
-    checkedPermissions.value = ['page:dashboard', 'page:personal']
-  }
+  checkedPermissions.value = row.permissions || []
   permissionDialogVisible.value = true
+}
+
+// 状态切换
+const handleStatusChange = async (row) => {
+  try {
+    await axios.put(`/api/admin/roles/${row.id}/status`, {
+      status: row.status
+    })
+    ElMessage.success('状态更新成功')
+  } catch (error) {
+    // 恢复原状态
+    row.status = row.status === 'enabled' ? 'disabled' : 'enabled'
+    console.error('状态更新失败:', error)
+    // 根据错误信息显示具体的错误原因
+    if (error.response && error.response.data && error.response.data.message) {
+      ElMessage.error(error.response.data.message)
+    } else {
+      ElMessage.error('状态更新失败')
+    }
+  }
 }
 
 // 提交表单
@@ -267,12 +307,35 @@ const handleSubmit = async () => {
   try {
     await formRef.value.validate()
     
-    // 这里调用保存API
-    ElMessage.success(form.id ? '编辑成功' : '新增成功')
+    if (form.originalId) {
+      // 编辑角色
+      await axios.put(`/api/admin/roles/${form.originalId}`, {
+        name: form.name,
+        description: form.description,
+        status: form.status
+      })
+      ElMessage.success('编辑成功')
+    } else {
+      // 新增角色
+      await axios.post('/api/admin/roles', {
+        name: form.name,
+        description: form.description,
+        status: form.status,
+        permissions: [] // 新增时默认无权限，需要后续配置
+      })
+      ElMessage.success('新增成功')
+    }
+    
     dialogVisible.value = false
     loadRoleList()
   } catch (error) {
-    console.error('表单验证失败:', error)
+    console.error('保存角色失败:', error)
+    // 根据错误信息显示具体的错误原因
+    if (error.response && error.response.data && error.response.data.message) {
+      ElMessage.error(error.response.data.message)
+    } else {
+      ElMessage.error(form.originalId ? '编辑失败' : '新增失败')
+    }
   }
 }
 
@@ -282,11 +345,17 @@ const handlePermissionSubmit = async () => {
   
   try {
     const checkedKeys = permissionTreeRef.value.getCheckedKeys()
-    console.log('角色权限:', currentRole.value.id, checkedKeys)
+    
+    await axios.put(`/api/admin/roles/${currentRole.value.id}`, {
+      name: currentRole.value.name,
+      permissions: checkedKeys
+    })
     
     ElMessage.success('权限配置成功')
     permissionDialogVisible.value = false
+    loadRoleList() // 重新加载角色列表
   } catch (error) {
+    console.error('权限配置失败:', error)
     ElMessage.error('权限配置失败')
   }
 }
@@ -294,6 +363,8 @@ const handlePermissionSubmit = async () => {
 // 对话框关闭处理
 const handleDialogClose = () => {
   formRef.value?.resetFields()
+  form.originalId = ''
+  form.status = ''
 }
 
 const handlePermissionDialogClose = () => {

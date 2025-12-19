@@ -37,6 +37,24 @@ router.beforeEach(async (to, from, next) => {
 
   // 公共页面直接放行
   if (to.meta.public) {
+    // 如果已登录用户访问登录页，重定向到首页
+    if (to.path === '/login' && userStore.token) {
+      try {
+        if (!userStore.userInfo) {
+          await userStore.fetchUserInfo()
+        }
+        // 跳转到用户有权限的第一个页面
+        if (userStore.hasPermission('page:dashboard')) {
+          return next('/dashboard')
+        } else if (userStore.hasPermission('page:personal')) {
+          return next('/personal')
+        }
+      } catch (e) {
+        // 获取用户信息失败，清除token重新登录
+        userStore.logout()
+        return next()
+      }
+    }
     return next()
   }
 
@@ -91,20 +109,20 @@ router.beforeEach(async (to, from, next) => {
         // 去掉开头 / 作为路由 path
         const routePath = menu.fullPath.replace(/^\//, '')
 
-        router.addRoute('Root', {
-          path: routePath,
-          name: menu.component,
-          component: () => import(`../views/${menu.component}.vue`),
-          meta: { title: menu.title, permission: menu.permission },
-        })
+        // 避免重复注册已存在的路由
+        try {
+          router.addRoute('Root', {
+            path: routePath,
+            name: menu.component,
+            component: () => import(`../views/${menu.component}.vue`),
+            meta: { title: menu.title, permission: menu.permission },
+          })
+        } catch (error) {
+          console.warn(`路由 ${routePath} 已存在或注册失败:`, error.message)
+        }
       })
 
       isDynamicRoutesAdded = true
-
-      // 登录后跳首页
-      if (from.path === '/login') {
-        return next('/dashboard')
-      }
 
       // 避免停留在未注册路由时报错
       return next({ ...to, replace: true })
@@ -115,9 +133,24 @@ router.beforeEach(async (to, from, next) => {
     return next({ path: '/login', replace: true })
   }
 
-  // 权限校验
+  // 权限校验 - 避免无限重定向
   if (to.meta.permission && !userStore.hasPermission(to.meta.permission)) {
-    return next('/dashboard')
+    // 检查是否已经在尝试跳转到登录页，避免循环
+    if (to.path !== '/login') {
+      // 重定向到用户有权限的第一个页面
+      if (userStore.hasPermission('page:personal')) {
+        return next('/personal')
+      } else if (userStore.hasPermission('page:dashboard')) {
+        return next('/dashboard')
+      } else {
+        // 如果没有任何页面权限，重定向到登录页
+        userStore.logout()
+        return next('/login')
+      }
+    } else {
+      // 如果已经在登录页，直接放行
+      return next()
+    }
   }
 
   next()

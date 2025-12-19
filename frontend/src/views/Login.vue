@@ -22,9 +22,14 @@ const handleSubmit = async () => {
   try {
     await userStore.login(form)
     await userStore.fetchUserInfo()
-    await userStore.fetchMenus()
+    const menus = await userStore.fetchMenus()
     ElMessage.success('登录成功')
-    router.push('/')
+    
+    // 等待路由动态注册完成
+    await new Promise(resolve => setTimeout(resolve, 200))
+    
+    // 直接跳转到根路径，让路由守卫处理权限跳转
+    await router.push('/')
   } catch (e) {
     ElMessage.error(e.message || '登录失败')
   } finally {

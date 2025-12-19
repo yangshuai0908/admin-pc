@@ -1,6 +1,15 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import * as echarts from 'echarts'
+import { useUserStore } from '../stores/user'
+import { ElMessage } from 'element-plus'
+
+const userStore = useUserStore()
+
+// 检查仪表盘访问权限
+if (!userStore.hasPermission('dashboard:view')) {
+  ElMessage.error('无仪表盘访问权限')
+}
 
 const chartRef = ref(null)
 

@@ -28,7 +28,13 @@
             <el-input v-model="form.phone" placeholder="请输入手机号" />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="saveProfile">保存信息</el-button>
+            <el-button 
+              type="primary" 
+              @click="saveProfile"
+              v-if="userStore.hasPermission('personal:edit')"
+            >
+              保存信息
+            </el-button>
           </el-form-item>
         </el-form>
       </div>
