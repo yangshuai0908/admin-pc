@@ -168,6 +168,41 @@ app.post('/api/user/profile', authMiddleware, (req, res) => {
   });
 });
 
+// 用户修改自己的密码
+app.post('/api/user/change-password', authMiddleware, (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  
+  // 验证参数
+  if (!oldPassword || !newPassword) {
+    return res.status(400).json({ message: '旧密码和新密码不能为空' });
+  }
+  
+  if (newPassword.length < 6) {
+    return res.status(400).json({ message: '新密码长度不能少于6位' });
+  }
+  
+  // 查找用户
+  const userIndex = db.users.findIndex((u) => u.id === req.user.id);
+  if (userIndex === -1) {
+    return res.status(404).json({ message: '用户不存在' });
+  }
+  
+  // 验证旧密码
+  if (db.users[userIndex].password !== oldPassword) {
+    return res.status(400).json({ message: '旧密码不正确' });
+  }
+  
+  // 更新密码
+  db.users[userIndex].password = newPassword;
+  saveDb();
+  
+  // 返回成功消息，告知前端需要重新登录
+  res.json({ 
+    message: '密码修改成功，请重新登录',
+    requireRelogin: true 
+  });
+});
+
 // 获取动态菜单 / 路由，根据权限过滤
 app.get('/api/menus', authMiddleware, (req, res) => {
   const { permissions, roleId } = req.user;
