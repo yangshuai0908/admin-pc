@@ -7,22 +7,34 @@
         "page:dashboard",
         "page:user",
         "page:menu-manage",
-        "btn:user:add",
-        "btn:user:edit",
-        "btn:user:delete"
+        "page:role",
+        "page:menu",
+        "page:personal",
+        "page:system"
       ]
     },
     {
       "id": "user",
       "name": "普通用户",
       "permissions": [
-        "page:dashboard"
+        "page:dashboard",
+        "page:personal"
       ]
     }
   ],
   "users": [
-    { "id": 1, "username": "admin", "password": "123456", "roleId": "admin" },
-    { "id": 2, "username": "user", "password": "123456", "roleId": "user" }
+    {
+      "id": 1,
+      "username": "admin",
+      "password": "123456",
+      "roleId": "admin"
+    },
+    {
+      "id": 2,
+      "username": "user",
+      "password": "123456",
+      "roleId": "user"
+    }
   ],
   "menus": [
     {
@@ -32,46 +44,52 @@
       "path": "/dashboard",
       "component": "Dashboard",
       "permission": "page:dashboard",
-      "children": []
+      "type": "menu"
     },
     {
-      "id": 2,
-      "title": "用户管理",
-      "icon": "User",
-      "path": "/user",
-      "component": "User",
-      "permission": "page:user",
+      "id": 4,
+      "title": "系统管理",
+      "icon": "Setting",
+      "path": "/system",
+      "permission": "page:system",
       "children": [
         {
-          "id": 21,
-          "title": "新增按钮",
-          "type": "button",
-          "permission": "btn:user:add"
+          "id": 2,
+          "title": "用户管理",
+          "icon": "User",
+          "path": "/system/user",
+          "component": "User",
+          "permission": "page:user",
+          "type": "menu"
         },
         {
-          "id": 22,
-          "title": "编辑按钮",
-          "type": "button",
-          "permission": "btn:user:edit"
+          "id": 5,
+          "title": "角色管理",
+          "icon": "Setting",
+          "path": "/system/role",
+          "component": "Role",
+          "permission": "page:role",
+          "type": "menu"
         },
         {
-          "id": 23,
-          "title": "删除按钮",
-          "type": "button",
-          "permission": "btn:user:delete"
+          "id": 3,
+          "title": "菜单管理",
+          "icon": "Menu",
+          "path": "/system/menu",
+          "component": "Menu",
+          "permission": "page:menu",
+          "type": "menu"
         }
       ]
     },
     {
-      "id": 3,
-      "title": "菜单管理",
-      "icon": "Menu",
-      "path": "/menu-manage",
-      "component": "MenuManage",
-      "permission": "page:menu-manage",
-      "children": []
+      "id": "1766124319661",
+      "title": "个人资料",
+      "path": "personal",
+      "icon": "Folder",
+      "component": "Personal ",
+      "permission": "page:personal",
+      "type": "menu"
     }
   ]
 }
-
-

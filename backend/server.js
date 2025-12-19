@@ -97,15 +97,24 @@ app.get('/api/user/info', authMiddleware, (req, res) => {
 
 // 获取动态菜单 / 路由，根据权限过滤
 app.get('/api/menus', authMiddleware, (req, res) => {
-  const { permissions } = req.user;
+  const { permissions, roleId } = req.user;
 
-  const filterMenus = (list) =>
-    list
-      .filter((m) => !m.permission || permissions.includes(m.permission))
+  // 管理员可以看到所有菜单
+  if (roleId === 'admin') {
+    res.json(db.menus);
+    return;
+  }
+
+  const filterMenus = (list) => {
+    if (!Array.isArray(list)) return [];
+    
+    return list
+      .filter((m) => m && (!m.permission || permissions.includes(m.permission)))
       .map((m) => ({
         ...m,
-        children: m.children ? filterMenus(m.children) : [],
+        children: m.children && Array.isArray(m.children) ? filterMenus(m.children) : [],
       }));
+  };
 
   res.json(filterMenus(db.menus));
 });
@@ -137,6 +146,114 @@ app.post('/api/admin/rbac', authMiddleware, (req, res) => {
   saveDb();
   res.json({ message: '保存成功', db });
 });
+
+// 菜单管理相关API
+app.get('/api/admin/menus', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('page:menu-manage')) {
+    return res.status(403).json({ message: '无菜单管理权限' });
+  }
+  res.json({ menus: db.menus });
+});
+
+app.post('/api/admin/menus', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('page:menu-manage')) {
+    return res.status(403).json({ message: '无菜单管理权限' });
+  }
+  
+  const { title, path, icon, component, permission, type, parentId } = req.body;
+  const newMenu = {
+    id: Date.now().toString(),
+    title,
+    path: path || '',
+    icon: icon || '',
+    component: component || '',
+    permission: permission || '',
+    type: type || 'menu'
+  };
+  
+  if (parentId) {
+    const addToParent = (menus, parentId, newMenu) => {
+      for (let menu of menus) {
+        if (menu.id === parentId) {
+          if (!menu.children) menu.children = [];
+          menu.children.push(newMenu);
+          return true;
+        }
+        if (menu.children && addToParent(menu.children, parentId, newMenu)) {
+          return true;
+        }
+      }
+      return false;
+    };
+    addToParent(db.menus, parentId, newMenu);
+  } else {
+    db.menus.push(newMenu);
+  }
+  
+  saveDb();
+  res.json(newMenu);
+});
+
+app.put('/api/admin/menus/:id', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('page:menu-manage')) {
+    return res.status(403).json({ message: '无菜单管理权限' });
+  }
+  
+  const { id } = req.params;
+  const updateData = req.body;
+  
+  const updateMenu = (menus, id, updateData) => {
+    for (let menu of menus) {
+      if (menu.id === id) {
+        Object.assign(menu, updateData);
+        return true;
+      }
+      if (menu.children && updateMenu(menu.children, id, updateData)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  
+  const updated = updateMenu(db.menus, id, updateData);
+  if (updated) {
+    saveDb();
+    res.json({ message: '更新成功' });
+  } else {
+    res.status(404).json({ message: '菜单不存在' });
+  }
+});
+
+app.delete('/api/admin/menus/:id', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('page:menu-manage')) {
+    return res.status(403).json({ message: '无菜单管理权限' });
+  }
+  
+  const { id } = req.params;
+  
+  const deleteMenu = (menus, id) => {
+    for (let i = 0; i < menus.length; i++) {
+      if (menus[i].id === id) {
+        menus.splice(i, 1);
+        return true;
+      }
+      if (menus[i].children && deleteMenu(menus[i].children, id)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  
+  const deleted = deleteMenu(db.menus, id);
+  if (deleted) {
+    saveDb();
+    res.json({ message: '删除成功' });
+  } else {
+    res.status(404).json({ message: '菜单不存在' });
+  }
+});
+
+
 
 app.listen(PORT, () => {
   console.log(`RBAC backend server running at http://localhost:${PORT}`);

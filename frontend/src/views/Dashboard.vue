@@ -28,14 +28,30 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
+  <div class="dashboard">
     <el-card>
       <template #header>
-        <span>仪表盘</span>
+        <div class="card-header">
+          <span>📊 仪表盘</span>
+        </div>
       </template>
       <div ref="chartRef" style="height: 360px"></div>
     </el-card>
   </div>
 </template>
+
+<style scoped>
+.dashboard {
+  padding: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+</style>
+
+
 
 
