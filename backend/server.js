@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
 
 const app = express();
 const PORT = 3000;
@@ -11,6 +12,38 @@ const JWT_SECRET = 'demo-secret';
 
 app.use(cors());
 app.use(bodyParser.json());
+
+// 配置 multer 用于文件上传
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    // 确保 uploads 目录存在
+    const uploadDir = path.join(__dirname, 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    // 生成唯一文件名
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'avatar-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 限制文件大小为5MB
+  },
+  fileFilter: function (req, file, cb) {
+    // 只允许图片文件
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('只允许上传图片文件!'));
+    }
+  }
+});
 
 // ===== 从 JSON 文件加载 RBAC 数据（模拟简单持久化） =====
 const dbFile = path.join(__dirname, 'data', 'rbac.json');
@@ -92,10 +125,46 @@ app.get('/api/user/info', authMiddleware, (req, res) => {
   const user = db.users.find((u) => u.id === req.user.id);
   if (!user) return res.status(404).json({ message: '用户不存在' });
   const role = getRoleById(user.roleId);
+  
+  // 返回用户信息时包含头像字段
   res.json({
     id: user.id,
     username: user.username,
+    email: user.email || '',
+    phone: user.phone || '',
+    avatar: user.avatar || '',
     role,
+  });
+});
+
+// 更新用户个人信息（包括头像）
+app.post('/api/user/profile', authMiddleware, (req, res) => {
+  const { email, phone, avatar } = req.body;
+  const userIndex = db.users.findIndex((u) => u.id === req.user.id);
+  
+  if (userIndex === -1) {
+    return res.status(404).json({ message: '用户不存在' });
+  }
+  
+  // 更新用户信息
+  if (email !== undefined) db.users[userIndex].email = email;
+  if (phone !== undefined) db.users[userIndex].phone = phone;
+  if (avatar !== undefined) db.users[userIndex].avatar = avatar;
+  
+  saveDb();
+  
+  // 返回更新后的用户信息
+  const updatedUser = db.users[userIndex];
+  const role = getRoleById(updatedUser.roleId);
+  
+  res.json({
+    id: updatedUser.id,
+    username: updatedUser.username,
+    email: updatedUser.email || '',
+    phone: updatedUser.phone || '',
+    avatar: updatedUser.avatar || '',
+    role,
+    message: '用户信息更新成功'
   });
 });
 
@@ -722,6 +791,32 @@ app.delete('/api/admin/users/:id', authMiddleware, (req, res) => {
   saveDb();
   res.json({ message: '用户删除成功' });
 });
+
+// 头像上传接口
+app.post('/api/upload/avatar', authMiddleware, upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: '请上传文件' });
+  }
+  
+  // 保存头像路径到用户信息中
+  const userIndex = db.users.findIndex((u) => u.id === req.user.id);
+  if (userIndex === -1) {
+    return res.status(404).json({ message: '用户不存在' });
+  }
+  
+  // 保存相对路径到数据库
+  const avatarPath = '/uploads/' + req.file.filename;
+  db.users[userIndex].avatar = avatarPath;
+  saveDb();
+  
+  res.json({ 
+    url: avatarPath,
+    message: '头像上传成功' 
+  });
+});
+
+// 静态文件服务，提供上传的文件访问
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.listen(PORT, () => {
   console.log(`RBAC backend server running at http://localhost:${PORT}`);

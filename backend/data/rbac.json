@@ -77,7 +77,10 @@
       "id": 1,
       "username": "admin",
       "password": "123456",
-      "roleId": "1"
+      "roleId": "1",
+      "email": "yangshuai970908@126.com",
+      "phone": "18162637527",
+      "avatar": "/uploads/avatar/1766136426065.png"
     },
     {
       "id": 2,
