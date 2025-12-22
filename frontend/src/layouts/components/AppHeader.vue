@@ -22,6 +22,11 @@ const themeStore = useThemeStore()
 // 全屏状态
 const isFullscreen = ref(false)
 
+// 个人中心页面
+const handlePersonal = () => {
+    router.push('/personal')
+}
+// 退出
 const handleLogout = () => {
     userStore.logout()
     router.push('/login')
@@ -50,14 +55,14 @@ onMounted(() => {
     userStore.fetchUnreadCount()
     // 每30秒更新一次未读数量
     setInterval(userStore.fetchUnreadCount, 30000)
-    
+
     // 监听全屏变化事件
     const handleFullscreenChange = () => {
         isFullscreen.value = !!document.fullscreenElement
     }
-    
+
     document.addEventListener('fullscreenchange', handleFullscreenChange)
-    
+
     // 清理事件监听
     return () => {
         document.removeEventListener('fullscreenchange', handleFullscreenChange)
@@ -91,7 +96,8 @@ onMounted(() => {
         <div class="right">
             <!-- 消息提醒 -->
             <div class="message-notification">
-                <el-badge :value="userStore.unreadCount" :hidden="userStore.unreadCount === 0" class="notification-badge">
+                <el-badge :value="userStore.unreadCount" :hidden="userStore.unreadCount === 0"
+                    class="notification-badge">
                     <div class="message-toggle" @click="handleMessage">
                         <el-icon class="message-icon">
                             <Bell />
@@ -99,7 +105,7 @@ onMounted(() => {
                     </div>
                 </el-badge>
             </div>
-            
+
             <!-- 全屏切换 -->
             <div class="fullscreen-toggle" @click="toggleFullscreen">
                 <el-icon class="fullscreen-icon">
@@ -107,7 +113,7 @@ onMounted(() => {
                     <SwitchButton v-else />
                 </el-icon>
             </div>
-            
+
             <div class="theme-toggle" @click="themeStore.toggle">
                 <el-icon class="theme-icon" :class="{ 'dark-theme': themeStore.mode === 'dark' }">
                     <Sunny v-if="themeStore.mode === 'light'" />
@@ -120,6 +126,7 @@ onMounted(() => {
                 </span>
                 <template #dropdown>
                     <el-dropdown-menu>
+                        <el-dropdown-item @click="handlePersonal">个人中心</el-dropdown-item>
                         <el-dropdown-item @click="handleLogout">退出登录</el-dropdown-item>
                     </el-dropdown-menu>
                 </template>
