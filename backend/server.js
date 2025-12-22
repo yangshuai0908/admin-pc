@@ -207,8 +207,8 @@ app.post('/api/user/change-password', authMiddleware, (req, res) => {
 app.get('/api/menus', authMiddleware, (req, res) => {
   const { permissions, roleId } = req.user;
 
-  // 管理员可以看到所有菜单
-  if (roleId === 'admin') {
+  // 管理员可以看到所有菜单 (roleId 为 "1" 表示管理员)
+  if (roleId === '1') {
     res.json(db.menus);
     return;
   }
@@ -416,6 +416,14 @@ app.get('/api/admin/roles', authMiddleware, (req, res) => {
     return res.status(403).json({ message: '无角色管理权限' });
   }
   res.json({ roles: db.roles });
+});
+
+// 获取角色列表（用于消息目标选择）
+app.get('/api/roles', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('message:view')) {
+    return res.status(403).json({ message: '无权限查看角色列表' });
+  }
+  res.json(db.roles);
 });
 
 // 获取下一个可用的角色ID
@@ -651,6 +659,16 @@ app.get('/api/admin/permissions', authMiddleware, (req, res) => {
       ]
     },
     {
+      id: 'message_operations',
+      title: '消息管理操作',
+      children: [
+        { id: 'message:create', title: '创建消息' },
+        { id: 'message:edit', title: '编辑消息' },
+        { id: 'message:delete', title: '删除消息' },
+        { id: 'message:view', title: '查看消息' }
+      ]
+    },
+    {
       id: 'dashboard_operations',
       title: '仪表盘操作',
       children: [
@@ -847,6 +865,261 @@ app.post('/api/upload/avatar', authMiddleware, upload.single('file'), (req, res)
   res.json({ 
     url: avatarPath,
     message: '头像上传成功' 
+  });
+});
+
+// ================== 消息管理接口 ==================
+
+// 获取当前用户的系统消息列表
+app.get('/api/messages', authMiddleware, (req, res) => {
+  const { page = 1, limit = 10, type = 'all', status = 'all' } = req.query;
+  const userId = req.user.id;
+  
+  // 获取系统消息
+  let messages = db.systemMessages || [];
+  
+  // 为每条消息添加用户阅读状态
+  messages = messages.map(msg => {
+    const userReadStatus = msg.readByUsers?.find(u => u.userId === userId);
+    return {
+      ...msg,
+      isRead: userReadStatus ? userReadStatus.isRead : false,
+      readTime: userReadStatus ? userReadStatus.readTime : null
+    };
+  });
+  
+  // 过滤条件
+  if (type !== 'all') {
+    messages = messages.filter(msg => msg.type === type);
+  }
+  
+  if (status !== 'all') {
+    if (status === 'read') {
+      messages = messages.filter(msg => msg.isRead);
+    } else if (status === 'unread') {
+      messages = messages.filter(msg => !msg.isRead);
+    }
+  }
+  
+  // 按时间倒序排列
+  messages.sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
+  
+  // 分页
+  const total = messages.length;
+  const start = (page - 1) * limit;
+  const end = start + parseInt(limit);
+  const paginatedMessages = messages.slice(start, end);
+  
+  res.json({
+    data: paginatedMessages,
+    total,
+    page: parseInt(page),
+    limit: parseInt(limit),
+    totalPages: Math.ceil(total / limit)
+  });
+});
+
+// 标记消息为已读
+app.put('/api/messages/:id/read', authMiddleware, (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+  
+  const messageIndex = db.systemMessages.findIndex(msg => msg.id === id);
+  if (messageIndex === -1) {
+    return res.status(404).json({ message: '消息不存在' });
+  }
+  
+  const message = db.systemMessages[messageIndex];
+  
+  // 初始化readByUsers数组（如果不存在）
+  if (!message.readByUsers) {
+    message.readByUsers = [];
+  }
+  
+  // 查找用户的阅读记录
+  const userReadIndex = message.readByUsers.findIndex(u => u.userId === userId);
+  
+  if (userReadIndex === -1) {
+    // 添加新的阅读记录
+    message.readByUsers.push({
+      userId: userId,
+      isRead: true,
+      readTime: new Date().toISOString()
+    });
+  } else {
+    // 更新现有阅读记录
+    message.readByUsers[userReadIndex] = {
+      userId: userId,
+      isRead: true,
+      readTime: new Date().toISOString()
+    };
+  }
+  
+  saveDb();
+  res.json({ message: '消息已标记为已读' });
+});
+
+// 批量标记消息为已读
+app.put('/api/messages/read-batch', authMiddleware, (req, res) => {
+  const { messageIds } = req.body;
+  const userId = req.user.id;
+  
+  if (!messageIds || !Array.isArray(messageIds)) {
+    return res.status(400).json({ message: '请提供有效的消息ID列表' });
+  }
+  
+  let updatedCount = 0;
+  
+  messageIds.forEach(id => {
+    const messageIndex = db.systemMessages.findIndex(msg => msg.id === id);
+    if (messageIndex !== -1) {
+      const message = db.systemMessages[messageIndex];
+      
+      // 初始化readByUsers数组（如果不存在）
+      if (!message.readByUsers) {
+        message.readByUsers = [];
+      }
+      
+      // 查找用户的阅读记录
+      const userReadIndex = message.readByUsers.findIndex(u => u.userId === userId);
+      
+      if (userReadIndex === -1) {
+        // 添加新的阅读记录
+        message.readByUsers.push({
+          userId: userId,
+          isRead: true,
+          readTime: new Date().toISOString()
+        });
+      } else if (!message.readByUsers[userReadIndex].isRead) {
+        // 更新现有阅读记录（仅当未读时）
+        message.readByUsers[userReadIndex] = {
+          userId: userId,
+          isRead: true,
+          readTime: new Date().toISOString()
+        };
+      }
+      
+      updatedCount++;
+    }
+  });
+  
+  saveDb();
+  res.json({ message: `成功标记${updatedCount}条消息为已读` });
+});
+
+// 获取未读消息数量
+app.get('/api/messages/unread-count', authMiddleware, (req, res) => {
+  const userId = req.user.id;
+  
+  const messages = db.systemMessages || [];
+  let unreadCount = 0;
+  
+  messages.forEach(msg => {
+    const userReadStatus = msg.readByUsers?.find(u => u.userId === userId);
+    if (!userReadStatus || !userReadStatus.isRead) {
+      unreadCount++;
+    }
+  });
+  
+  res.json({ unreadCount });
+});
+
+// 删除消息（仅管理员）
+app.delete('/api/admin/messages/:id', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('message:delete')) {
+    return res.status(403).json({ message: '无权限删除消息' });
+  }
+  
+  const { id } = req.params;
+  const messageIndex = db.systemMessages.findIndex(msg => msg.id === id);
+  
+  if (messageIndex === -1) {
+    return res.status(404).json({ message: '消息不存在' });
+  }
+  
+  db.systemMessages.splice(messageIndex, 1);
+  saveDb();
+  res.json({ message: '消息删除成功' });
+});
+
+// 创建系统消息（仅管理员）
+app.post('/api/admin/messages', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('message:create')) {
+    return res.status(403).json({ message: '无权限创建消息' });
+  }
+  
+  const { title, content, type, priority, targetRoles } = req.body;
+  
+  if (!title || !content) {
+    return res.status(400).json({ message: '标题和内容不能为空' });
+  }
+  
+  const newMessage = {
+    id: Date.now().toString(),
+    title,
+    content,
+    type: type || 'notice',
+    priority: priority || 'normal',
+    targetRoles: targetRoles || [], // 空数组表示所有角色
+    readByUsers: [], // 跟踪每个用户的阅读状态
+    createBy: req.user.id,
+    createTime: new Date().toISOString()
+  };
+  
+  if (!db.systemMessages) {
+    db.systemMessages = [];
+  }
+  
+  db.systemMessages.push(newMessage);
+  saveDb();
+  
+  res.json({
+    message: '消息创建成功',
+    data: newMessage
+  });
+});
+
+// 获取所有消息列表（管理员）
+app.get('/api/admin/messages', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('message:view')) {
+    return res.status(403).json({ message: '无权限查看消息管理' });
+  }
+  
+  const { page = 1, limit = 10, type = 'all' } = req.query;
+  
+  let messages = db.systemMessages || [];
+  
+  if (type !== 'all') {
+    messages = messages.filter(msg => msg.type === type);
+  }
+  
+  // 按时间倒序排列
+  messages.sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
+  
+  // 统计每条消息的阅读情况
+  messages = messages.map(msg => {
+    const readCount = msg.readByUsers?.filter(u => u.isRead).length || 0;
+    const totalUsers = db.users.length;
+    return {
+      ...msg,
+      readCount,
+      unreadCount: totalUsers - readCount,
+      readRate: totalUsers > 0 ? Math.round((readCount / totalUsers) * 100) : 0
+    };
+  });
+  
+  // 分页
+  const total = messages.length;
+  const start = (page - 1) * limit;
+  const end = start + parseInt(limit);
+  const paginatedMessages = messages.slice(start, end);
+  
+  res.json({
+    data: paginatedMessages,
+    total,
+    page: parseInt(page),
+    limit: parseInt(limit),
+    totalPages: Math.ceil(total / limit)
   });
 });
 

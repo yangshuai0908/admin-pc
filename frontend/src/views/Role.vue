@@ -129,7 +129,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from '../utils/request'
 import { useUserStore } from '../stores/user'
@@ -278,6 +278,13 @@ const handlePermissions = (row) => {
   currentRole.value = { ...row }
   checkedPermissions.value = row.permissions || []
   permissionDialogVisible.value = true
+  
+  // 确保权限树正确设置选中状态（使用 nextTick 等待 DOM 更新）
+  nextTick(() => {
+    if (permissionTreeRef.value) {
+      permissionTreeRef.value.setCheckedKeys(checkedPermissions.value)
+    }
+  })
 }
 
 // 状态切换
@@ -369,6 +376,10 @@ const handleDialogClose = () => {
 
 const handlePermissionDialogClose = () => {
   checkedPermissions.value = []
+  // 清空权限树的选中状态
+  if (permissionTreeRef.value) {
+    permissionTreeRef.value.setCheckedKeys([])
+  }
 }
 
 // 分页处理
@@ -388,11 +399,7 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-.role-manage {
-  padding: 20px;
-}
-
+<style scoped lang="scss">
 .box-card {
   margin-bottom: 20px;
 }

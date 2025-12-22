@@ -50,10 +50,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.dashboard {
-  padding: 20px;
-}
-
 .card-header {
   display: flex;
   justify-content: space-between;

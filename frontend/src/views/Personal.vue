@@ -207,11 +207,7 @@ const changePassword = async () => {
 }
 </script>
 
-<style scoped>
-.personal-center {
-  padding: 20px;
-}
-
+<style scoped lang="scss">
 .card-header {
   font-size: 18px;
   font-weight: bold;
@@ -255,8 +251,10 @@ const changePassword = async () => {
   align-items: center;
 }
 
-.account-settings h3 {
-  margin-bottom: 20px;
-  color: #333;
+.account-settings {
+  h3 {
+    margin-bottom: 20px;
+    color: #333;
+  }
 }
 </style>

@@ -360,10 +360,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.user-manage {
-  padding: 20px;
-}
-
 .card-header {
   display: flex;
   justify-content: space-between;

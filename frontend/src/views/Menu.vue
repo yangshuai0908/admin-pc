@@ -44,7 +44,7 @@ const loadData = async () => {
   try {
     const res = await axios.get('/api/admin/menus')
     state.menus = res.menus || []
-    
+
     // 默认展开所有节点
     state.expandedKeys = state.menus.map(menu => menu.id)
   } catch (e) {
@@ -53,8 +53,6 @@ const loadData = async () => {
     state.loading = false
   }
 }
-
-
 
 const handleAddMenu = (parentData = null) => {
   state.addForm = {
@@ -78,7 +76,7 @@ const handleDelete = async (data) => {
     await ElMessageBox.confirm('确定要删除此菜单项吗？删除后不可恢复。', '确认删除', {
       type: 'warning'
     })
-    
+
     await axios.delete(`/api/admin/menus/${data.id}`)
     deleteMenuById(state.menus, data.id)
     ElMessage.success('删除成功')
@@ -109,7 +107,7 @@ const handleSaveEdit = async () => {
     ElMessage.error('请输入菜单名称')
     return
   }
-  
+
   try {
     await axios.put(`/api/admin/menus/${state.editingNode.id}`, state.editingNode)
     updateMenuById(state.menus, state.editingNode.id, state.editingNode)
@@ -140,7 +138,7 @@ const handleSaveAdd = async () => {
     ElMessage.error('请输入菜单名称')
     return
   }
-  
+
   try {
     const newMenuData = {
       title: state.addForm.title,
@@ -151,16 +149,16 @@ const handleSaveAdd = async () => {
       type: state.addForm.type,
       parentId: state.addForm.parentId
     }
-    
+
     const response = await axios.post('/api/admin/menus', newMenuData)
     const newMenu = response.data
-    
+
     if (state.addForm.parentId) {
       addMenuToParent(state.menus, state.addForm.parentId, newMenu)
     } else {
       state.menus.push(newMenu)
     }
-    
+
     state.showAddDialog = false
     state.expandedKeys.push(newMenu.id)
     ElMessage.success('添加成功')
@@ -204,20 +202,17 @@ onMounted(() => {
           <span>🎨 可视化菜单管理</span>
           <div class="header-actions">
             <el-button type="primary" size="small" @click="handleAddMenu()" v-if="userStore.hasPermission('menu:add')">
-              <el-icon><Plus /></el-icon>
+              <el-icon>
+                <Plus />
+              </el-icon>
               添加顶级菜单
             </el-button>
           </div>
         </div>
       </template>
 
-      <el-tree
-        :data="state.menus"
-        :props="{ children: 'children', label: 'title' }"
-        :default-expanded-keys="state.expandedKeys"
-        node-key="id"
-        class="menu-tree"
-      >
+      <el-tree :data="state.menus" :props="{ children: 'children', label: 'title' }"
+        :default-expanded-keys="state.expandedKeys" node-key="id" class="menu-tree">
         <template #default="{ node, data }">
           <div class="tree-node">
             <div class="node-content">
@@ -233,27 +228,15 @@ onMounted(() => {
               </el-tag>
             </div>
             <div class="node-actions">
-              <el-button
-                v-if="data.type !== 'button' && userStore.hasPermission('menu:add')"
-                size="small"
-                type="primary"
-                @click="handleAddMenu(data)"
-              >
+              <el-button v-if="data.type !== 'button' && userStore.hasPermission('menu:add')" size="small"
+                type="primary" @click="handleAddMenu(data)">
                 添加子项
               </el-button>
-              <el-button
-                size="small"
-                @click="handleEdit(data)"
-                v-if="userStore.hasPermission('menu:edit')"
-              >
+              <el-button size="small" @click="handleEdit(data)" v-if="userStore.hasPermission('menu:edit')">
                 编辑
               </el-button>
-              <el-button
-                size="small"
-                type="danger"
-                @click="handleDelete(data)"
-                v-if="userStore.hasPermission('menu:delete')"
-              >
+              <el-button size="small" type="danger" @click="handleDelete(data)"
+                v-if="userStore.hasPermission('menu:delete')">
                 删除
               </el-button>
             </div>
@@ -265,11 +248,7 @@ onMounted(() => {
 
 
     <!-- 添加菜单对话框 -->
-    <el-dialog
-      v-model="state.showAddDialog"
-      :title="state.addForm.parentId ? '添加子菜单' : '添加顶级菜单'"
-      width="600px"
-    >
+    <el-dialog v-model="state.showAddDialog" :title="state.addForm.parentId ? '添加子菜单' : '添加顶级菜单'" width="600px">
       <el-form :model="state.addForm" label-width="100px">
         <el-form-item label="菜单名称" required>
           <el-input v-model="state.addForm.title" placeholder="请输入菜单名称" />
@@ -288,19 +267,14 @@ onMounted(() => {
         </el-form-item>
         <el-form-item v-if="state.addForm.type === 'menu'" label="图标">
           <el-select v-model="state.addForm.icon" placeholder="选择图标" clearable>
-            <el-option
-              v-for="icon in iconOptions"
-              :key="icon.value"
-              :label="icon.label"
-              :value="icon.value"
-            />
+            <el-option v-for="icon in iconOptions" :key="icon.value" :label="icon.label" :value="icon.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="权限标识">
           <el-input v-model="state.addForm.permission" placeholder="如: page:user" />
         </el-form-item>
       </el-form>
-      
+
       <template #footer>
         <el-button @click="state.showAddDialog = false">取消</el-button>
         <el-button type="primary" @click="handleSaveAdd">确定</el-button>
@@ -308,12 +282,8 @@ onMounted(() => {
     </el-dialog>
 
     <!-- 编辑菜单对话框 -->
-    <el-dialog
-      :model-value="!!state.editingNode"
-      @update:model-value="(val) => !val && (state.editingNode = null)"
-      title="编辑菜单"
-      width="600px"
-    >
+    <el-dialog :model-value="!!state.editingNode" @update:model-value="(val) => !val && (state.editingNode = null)"
+      title="编辑菜单" width="600px">
       <el-form v-if="state.editingNode" :model="state.editingNode" label-width="100px">
         <el-form-item label="菜单名称" required>
           <el-input v-model="state.editingNode.title" />
@@ -326,19 +296,14 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="图标">
           <el-select v-model="state.editingNode.icon" placeholder="选择图标" clearable>
-            <el-option
-              v-for="icon in iconOptions"
-              :key="icon.value"
-              :label="icon.label"
-              :value="icon.value"
-            />
+            <el-option v-for="icon in iconOptions" :key="icon.value" :label="icon.label" :value="icon.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="权限标识">
           <el-input v-model="state.editingNode.permission" />
         </el-form-item>
       </el-form>
-      
+
       <template #footer>
         <el-button @click="state.editingNode = null">取消</el-button>
         <el-button type="primary" @click="handleSaveEdit">保存</el-button>
@@ -347,7 +312,7 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .menu-manage {
   display: flex;
   flex-direction: column;
@@ -373,6 +338,40 @@ onMounted(() => {
   margin-top: 16px;
   max-height: 500px;
   overflow-y: auto;
+
+  /* 美化滚动条 */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+
+    &:hover {
+      background: #a8a8a8;
+    }
+  }
+
+  /* 暗黑主题适配 */
+  [data-theme='dark'] & {
+    &::-webkit-scrollbar-track {
+      background: #2d3748;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #4a5568;
+
+      &:hover {
+        background: #718096;
+      }
+    }
+  }
 }
 
 .tree-node {
@@ -381,6 +380,12 @@ onMounted(() => {
   justify-content: space-between;
   width: 100%;
   padding: 4px 0;
+
+  &:hover {
+    .node-actions {
+      opacity: 1;
+    }
+  }
 }
 
 .node-content {
@@ -405,44 +410,11 @@ onMounted(() => {
   gap: 8px;
   opacity: 0;
   transition: opacity 0.3s ease;
-}
 
-.tree-node:hover .node-actions {
-  opacity: 1;
-}
-
-
-
-/* 美化滚动条 */
-.menu-tree::-webkit-scrollbar {
-  width: 6px;
-}
-
-.menu-tree::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
-}
-
-.menu-tree::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
-
-.menu-tree::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
-}
-
-/* 暗黑主题适配 */
-[data-theme='dark'] .menu-tree::-webkit-scrollbar-track {
-  background: #2d3748;
-}
-
-[data-theme='dark'] .menu-tree::-webkit-scrollbar-thumb {
-  background: #4a5568;
-}
-
-[data-theme='dark'] .menu-tree::-webkit-scrollbar-thumb:hover {
-  background: #718096;
+  .el-button {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
 }
 
 /* 标签美化 */
@@ -450,20 +422,14 @@ onMounted(() => {
   margin-left: 4px;
 }
 
-/* 按钮组美化 */
-.node-actions .el-button {
-  padding: 4px 8px;
-  font-size: 12px;
-}
-
 /* 表单美化 */
 .el-form-item {
   margin-bottom: 18px;
 }
 
-.el-dialog .el-form {
-  padding: 0 20px;
+.el-dialog {
+  .el-form {
+    padding: 0 20px;
+  }
 }
 </style>
-
-

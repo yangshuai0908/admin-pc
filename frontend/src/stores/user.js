@@ -7,6 +7,7 @@ export const useUserStore = defineStore('user', {
     userInfo: null,
     menus: [],
     _menusFetched: false, // 添加缓存标志
+    unreadCount: 0, // 添加未读消息数量状态
   }),
   actions: {
     setToken(token) {
@@ -53,11 +54,28 @@ export const useUserStore = defineStore('user', {
       if (!this.userInfo || !this.userInfo.role) return false
       return this.userInfo.role.permissions.includes(code)
     },
+    async fetchUnreadCount() {
+      if (!this.token) return
+      try {
+        const response = await fetch('/api/messages/unread-count', {
+          headers: {
+            'Authorization': `Bearer ${this.token}`
+          }
+        })
+        const data = await response.json()
+        if (response.ok) {
+          this.unreadCount = data.unreadCount
+        }
+      } catch (error) {
+        console.error('获取未读消息数量失败:', error)
+      }
+    },
     logout() {
       this.setToken('')
       this.userInfo = null
       this.menus = []
       this._menusFetched = false // 重置缓存标志
+      this.unreadCount = 0 // 重置未读数量
     },
   },
 })

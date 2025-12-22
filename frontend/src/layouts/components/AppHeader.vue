@@ -1,6 +1,7 @@
 <script setup>
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Fold, Expand, Sunny, Moon } from '@element-plus/icons-vue'
+import { Fold, Expand, Sunny, Moon, Bell } from '@element-plus/icons-vue'
 import { useUserStore } from '../../stores/user'
 import { useThemeStore } from '../../stores/theme'
 
@@ -22,6 +23,17 @@ const handleLogout = () => {
     userStore.logout()
     router.push('/login')
 }
+
+// 跳转到消息页面
+const handleMessage = () => {
+    router.push('/message')
+}
+
+onMounted(() => {
+    userStore.fetchUnreadCount()
+    // 每30秒更新一次未读数量
+    setInterval(userStore.fetchUnreadCount, 30000)
+})
 </script>
 
 <template>
@@ -42,6 +54,16 @@ const handleLogout = () => {
             </el-breadcrumb>
         </div>
         <div class="right">
+            <!-- 消息提醒 -->
+            <div class="message-notification">
+                <el-badge :value="userStore.unreadCount" :hidden="userStore.unreadCount === 0" class="notification-badge">
+                    <div class="message-toggle" @click="handleMessage">
+                        <el-icon class="message-icon">
+                            <Bell />
+                        </el-icon>
+                    </div>
+                </el-badge>
+            </div>
             <div class="theme-toggle" @click="themeStore.toggle">
                 <el-icon class="theme-icon" :class="{ 'dark-theme': themeStore.mode === 'dark' }">
                     <Sunny v-if="themeStore.mode === 'light'" />
@@ -244,6 +266,68 @@ const handleLogout = () => {
 
 [data-theme='dark'] .el-dropdown-link:hover {
     transform: translateY(-2px);
+}
+
+/* 消息通知按钮 */
+.message-notification {
+    position: relative;
+}
+
+.message-toggle {
+    cursor: pointer;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 1);
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme='dark'] .message-toggle {
+    background: rgba(30, 41, 59, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.message-toggle:hover {
+    transform: scale(1.05);
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.message-toggle:active {
+    transform: scale(0.95);
+}
+
+.message-toggle:hover .message-icon {
+    color: var(--primary-color);
+    transform: rotate(15deg) scale(1.1);
+}
+
+.message-icon {
+    font-size: 20px;
+    color: #475569;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 1;
+}
+
+[data-theme='dark'] .message-icon {
+    color: var(--sidebar-text);
+}
+
+.message-toggle:hover .message-icon {
+    filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.4));
+}
+
+.notification-badge {
+    display: inline-block;
 }
 
 /* 主题切换按钮美化 */

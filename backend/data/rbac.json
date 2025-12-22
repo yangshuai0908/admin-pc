@@ -4,29 +4,41 @@
       "id": "1",
       "name": "管理员",
       "permissions": [
+        "page",
         "page:dashboard",
-        "page:personal",
+        "page:system",
         "page:user",
         "page:role",
         "page:menu",
-        "page:system",
+        "message:view",
+        "page:personal",
+        "page:message",
+        "operation",
+        "user_operations",
         "user:add",
         "user:edit",
         "user:delete",
         "user:view",
+        "role_operations",
         "role:add",
         "role:edit",
         "role:delete",
-        "role:view",
         "role:assign",
+        "role:view",
+        "menu_operations",
         "menu:add",
         "menu:edit",
         "menu:delete",
         "menu:view",
-        "menu:add",
-        "menu:delete",
+        "personal_operations",
         "personal:edit",
         "personal:view",
+        "message_operations",
+        "message:create",
+        "message:edit",
+        "message:delete",
+        "message:view",
+        "dashboard_operations",
         "dashboard:view"
       ],
       "status": "enabled"
@@ -36,39 +48,42 @@
       "name": "普通用户",
       "permissions": [
         "page:dashboard",
+        "message:view",
         "page:personal",
+        "page:message",
         "personal_operations",
         "personal:edit",
         "personal:view",
+        "message:view",
         "dashboard_operations",
         "dashboard:view"
       ],
-      "description": "普通用户",
       "status": "enabled"
     },
     {
       "id": "3",
-      "name": "测试",
+      "name": "编辑",
       "permissions": [
         "page:dashboard",
-        "personal_operations",
+        "page:personal",
+        "page:message",
+        "message:view",
         "personal:edit",
         "personal:view",
-        "dashboard_operations",
         "dashboard:view"
       ],
-      "description": "测试1221",
       "status": "enabled"
     },
     {
       "id": "4",
       "name": "访客",
-      "description": "访客",
       "permissions": [
         "page:dashboard",
-        "page:personal"
+        "page:message",
+        "message:view",
+        "personal:view",
+        "dashboard:view"
       ],
-      "createTime": "2025/12/19",
       "status": "enabled"
     }
   ],
@@ -84,15 +99,27 @@
     },
     {
       "id": 2,
-      "username": "user",
-      "password": "369258",
-      "roleId": "2"
+      "username": "user1",
+      "password": "123456",
+      "roleId": "2",
+      "email": "user1@example.com",
+      "phone": "13800138001"
     },
     {
-      "id": "3",
-      "username": "test",
+      "id": 3,
+      "username": "editor1",
       "password": "123456",
-      "roleId": "4"
+      "roleId": "3",
+      "email": "editor1@example.com",
+      "phone": "13800138002"
+    },
+    {
+      "id": 4,
+      "username": "guest1",
+      "password": "123456",
+      "roleId": "4",
+      "email": "guest1@example.com",
+      "phone": "13800138003"
     }
   ],
   "menus": [
@@ -124,7 +151,7 @@
         {
           "id": 5,
           "title": "角色管理",
-          "icon": "Setting",
+          "icon": "UserFilled",
           "path": "/system/role",
           "component": "Role",
           "permission": "page:role",
@@ -138,6 +165,15 @@
           "component": "Menu",
           "permission": "page:menu",
           "type": "menu"
+        },
+        {
+          "id": 8,
+          "title": "消息推送",
+          "icon": "Bell",
+          "path": "/system/message",
+          "component": "AdminMessage",
+          "permission": "message:view",
+          "type": "menu"
         }
       ]
     },
@@ -149,6 +185,125 @@
       "component": "Personal",
       "permission": "page:personal",
       "type": "menu"
+    },
+    {
+      "id": "7",
+      "title": "消息管理",
+      "path": "/message",
+      "icon": "Link",
+      "component": "Message",
+      "permission": "page:message",
+      "type": "menu"
+    }
+  ],
+  "systemMessages": [
+    {
+      "id": "1766372473375",
+      "title": "第三方代发",
+      "content": "大萨达方法第三方",
+      "type": "notice",
+      "priority": "normal",
+      "targetRoles": [
+        "2"
+      ],
+      "readByUsers": [
+        {
+          "userId": 1,
+          "isRead": true,
+          "readTime": "2025-12-22T03:01:19.360Z"
+        },
+        {
+          "userId": 2,
+          "isRead": true,
+          "readTime": "2025-12-22T03:19:37.553Z"
+        }
+      ],
+      "createBy": 1,
+      "createTime": "2025-12-22T03:01:13.376Z"
+    },
+    {
+      "id": "3",
+      "title": "新功能上线",
+      "content": "好消息！系统新增了消息管理功能，现在管理员可以向特定用户或角色发送通知消息，用户可以在个人中心查看系统消息。\n\n新功能特性：\n• 支持多种消息类型（通知、公告、系统消息）\n• 消息优先级设置\n• 阅读状态跟踪\n• 批量操作支持\n\n欢迎大家体验新功能并提出宝贵意见！",
+      "type": "system",
+      "priority": "normal",
+      "targetRoles": [
+        "1",
+        "2"
+      ],
+      "readByUsers": [
+        {
+          "userId": 1,
+          "isRead": true,
+          "readTime": "2025-12-22T02:11:31.246Z"
+        },
+        {
+          "userId": 4,
+          "isRead": true,
+          "readTime": "2025-12-22T02:56:05.357Z"
+        },
+        {
+          "userId": 2,
+          "isRead": true,
+          "readTime": "2025-12-22T03:19:37.553Z"
+        }
+      ],
+      "createBy": "1",
+      "createTime": "2024-01-03T14:15:00.000Z"
+    },
+    {
+      "id": "2",
+      "title": "系统维护通知",
+      "content": "尊敬的用户：\n\n为了提供更好的服务体验，系统将于本周六凌晨2:00-4:00进行例行维护升级。维护期间系统将暂时无法访问，请您提前做好相关工作安排。\n\n维护内容：\n1. 系统性能优化\n2. 安全补丁更新\n3. 数据库优化\n\n给您带来的不便，敬请谅解！",
+      "type": "announcement",
+      "priority": "high",
+      "targetRoles": [],
+      "readByUsers": [
+        {
+          "userId": 1,
+          "isRead": true,
+          "readTime": "2025-12-22T02:11:33.230Z"
+        },
+        {
+          "userId": 4,
+          "isRead": true,
+          "readTime": "2025-12-22T02:56:06.334Z"
+        },
+        {
+          "userId": 2,
+          "isRead": true,
+          "readTime": "2025-12-22T03:19:37.553Z"
+        }
+      ],
+      "createBy": "1",
+      "createTime": "2024-01-02T10:30:00.000Z"
+    },
+    {
+      "id": "1",
+      "title": "欢迎使用系统",
+      "content": "欢迎使用RBAC权限管理系统！本系统提供了完整的用户权限管理功能，包括用户管理、角色管理、菜单管理等。如果您在使用过程中遇到任何问题，请及时联系管理员。\n\n主要功能：\n• 用户管理 - 管理系统用户信息\n• 角色管理 - 配置用户角色权限\n• 菜单管理 - 自定义系统菜单\n• 消息管理 - 发送系统通知消息",
+      "type": "notice",
+      "priority": "normal",
+      "targetRoles": [],
+      "readByUsers": [
+        {
+          "userId": 1,
+          "isRead": true,
+          "readTime": "2025-12-22T02:11:34.333Z"
+        },
+        {
+          "userId": 4,
+          "isRead": true,
+          "readTime": "2025-12-22T02:56:06.822Z"
+        },
+        {
+          "userId": 2,
+          "isRead": true,
+          "readTime": "2025-12-22T03:19:37.553Z"
+        }
+      ],
+      "createBy": "1",
+      "createTime": "2024-01-01T09:00:00.000Z"
     }
   ]
 }
