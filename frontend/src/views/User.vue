@@ -291,7 +291,7 @@ onMounted(() => {
           <el-input v-model="searchForm.username" placeholder="请输入用户名" clearable />
         </el-form-item>
         <el-form-item label="角色">
-          <el-select v-model="searchForm.role" placeholder="请选择角色" clearable>
+          <el-select v-model="searchForm.role" placeholder="请选择角色" clearable style="width: 150px;">
             <el-option
               v-for="role in roleOptions"
               :key="role.value"
@@ -392,7 +392,7 @@ onMounted(() => {
           </div>
         </el-form-item>
         <el-form-item label="角色" prop="roleId">
-          <el-select v-model="form.roleId" placeholder="请选择角色">
+          <el-select v-model="form.roleId" placeholder="请选择角色" style="width: 100%;">
             <el-option
               v-for="role in roleOptions"
               :key="role.value"
@@ -423,6 +423,14 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
+.search-form .el-select {
+  width: 150px;
+}
+
+.search-form .el-input {
+  width: 200px;
+}
+
 .el-pagination {
   margin-top: 20px;
   text-align: right;
@@ -438,5 +446,14 @@ onMounted(() => {
   font-size: 12px;
   color: #999;
   margin-top: 4px;
+}
+
+/* 对话框表单样式 */
+.el-dialog .el-form-item .el-select {
+  width: 100%;
+}
+
+.el-dialog .el-form-item .el-input {
+  width: 100%;
 }
 </style>
