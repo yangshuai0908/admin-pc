@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Fold, Expand, Sunny, Moon, Bell } from '@element-plus/icons-vue'
+import { Fold, Expand, Sunny, Moon, Bell, FullScreen, SwitchButton } from '@element-plus/icons-vue'
 import { useUserStore } from '../../stores/user'
 import { useThemeStore } from '../../stores/theme'
 
@@ -19,6 +19,9 @@ const route = useRoute()
 const userStore = useUserStore()
 const themeStore = useThemeStore()
 
+// 全屏状态
+const isFullscreen = ref(false)
+
 const handleLogout = () => {
     userStore.logout()
     router.push('/login')
@@ -28,6 +31,38 @@ const handleLogout = () => {
 const handleMessage = () => {
     router.push('/message')
 }
+
+// 切换全屏
+const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen()
+        isFullscreen.value = true
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen()
+            isFullscreen.value = false
+        }
+    }
+}
+
+// 监听全屏状态变化
+onMounted(() => {
+    userStore.fetchUnreadCount()
+    // 每30秒更新一次未读数量
+    setInterval(userStore.fetchUnreadCount, 30000)
+    
+    // 监听全屏变化事件
+    const handleFullscreenChange = () => {
+        isFullscreen.value = !!document.fullscreenElement
+    }
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    
+    // 清理事件监听
+    return () => {
+        document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    }
+})
 
 onMounted(() => {
     userStore.fetchUnreadCount()
@@ -64,6 +99,15 @@ onMounted(() => {
                     </div>
                 </el-badge>
             </div>
+            
+            <!-- 全屏切换 -->
+            <div class="fullscreen-toggle" @click="toggleFullscreen">
+                <el-icon class="fullscreen-icon">
+                    <FullScreen v-if="!isFullscreen" />
+                    <SwitchButton v-else />
+                </el-icon>
+            </div>
+            
             <div class="theme-toggle" @click="themeStore.toggle">
                 <el-icon class="theme-icon" :class="{ 'dark-theme': themeStore.mode === 'dark' }">
                     <Sunny v-if="themeStore.mode === 'light'" />
@@ -328,6 +372,60 @@ onMounted(() => {
 
 .notification-badge {
     display: inline-block;
+}
+
+/* 全屏切换按钮美化 */
+.fullscreen-toggle {
+    cursor: pointer;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 1);
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme='dark'] .fullscreen-toggle {
+    background: rgba(30, 41, 59, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.fullscreen-icon {
+    font-size: 20px;
+    color: #475569;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 1;
+}
+
+[data-theme='dark'] .fullscreen-icon {
+    color: var(--sidebar-text);
+}
+
+.fullscreen-toggle:hover {
+    transform: scale(1.05);
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.fullscreen-toggle:active {
+    transform: scale(0.95);
+}
+
+.fullscreen-toggle:hover .fullscreen-icon {
+    color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+.fullscreen-toggle:hover .fullscreen-icon {
+    filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.4));
 }
 
 /* 主题切换按钮美化 */
