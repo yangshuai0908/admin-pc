@@ -95,7 +95,8 @@
       "roleId": "1",
       "email": "yangshuai970908@126.com",
       "phone": "18162637527",
-      "avatar": "/uploads/avatar/1766136426065.png"
+      "avatar": "/uploads/avatar/1766136426065.png",
+      "status": "enabled"
     },
     {
       "id": 2,
@@ -103,7 +104,8 @@
       "password": "123456",
       "roleId": "2",
       "email": "user1@example.com",
-      "phone": "13800138001"
+      "phone": "13800138001",
+      "status": "enabled"
     },
     {
       "id": 3,
@@ -111,7 +113,8 @@
       "password": "123456",
       "roleId": "3",
       "email": "editor1@example.com",
-      "phone": "13800138002"
+      "phone": "13800138002",
+      "status": "enabled"
     },
     {
       "id": 4,
@@ -119,7 +122,15 @@
       "password": "123456",
       "roleId": "4",
       "email": "guest1@example.com",
-      "phone": "13800138003"
+      "phone": "13800138003",
+      "status": "enabled"
+    },
+    {
+      "id": "5",
+      "username": "yangshaui",
+      "password": "123456",
+      "roleId": "2",
+      "status": "enabled"
     }
   ],
   "menus": [
@@ -216,6 +227,11 @@
           "userId": 2,
           "isRead": true,
           "readTime": "2025-12-22T03:19:37.553Z"
+        },
+        {
+          "userId": "5",
+          "isRead": true,
+          "readTime": "2025-12-22T06:14:43.454Z"
         }
       ],
       "createBy": 1,
@@ -246,6 +262,11 @@
           "userId": 2,
           "isRead": true,
           "readTime": "2025-12-22T03:19:37.553Z"
+        },
+        {
+          "userId": "5",
+          "isRead": true,
+          "readTime": "2025-12-22T06:14:39.692Z"
         }
       ],
       "createBy": "1",
@@ -273,6 +294,11 @@
           "userId": 2,
           "isRead": true,
           "readTime": "2025-12-22T03:19:37.553Z"
+        },
+        {
+          "userId": "5",
+          "isRead": true,
+          "readTime": "2025-12-22T06:14:40.659Z"
         }
       ],
       "createBy": "1",
@@ -300,6 +326,11 @@
           "userId": 2,
           "isRead": true,
           "readTime": "2025-12-22T03:19:37.553Z"
+        },
+        {
+          "userId": "5",
+          "isRead": true,
+          "readTime": "2025-12-22T06:14:41.331Z"
         }
       ],
       "createBy": "1",

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, Switch } from '@element-plus/icons-vue'
 import axios from '../utils/request'
 import { useUserStore } from '../stores/user'
 
@@ -210,6 +210,46 @@ const handleDialogClose = () => {
   formRef.value?.resetFields()
 }
 
+// 切换用户状态
+const handleStatusChange = async (row) => {
+  if (!userStore.hasPermission('user:edit')) {
+    return ElMessage.error('无编辑权限')
+  }
+  
+  try {
+    await ElMessageBox.confirm(
+      `确定要${row.status === 'enabled' ? '启用' : '禁用'}用户 "${row.username}" 吗？`,
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    await axios.put(`/api/admin/users/${row.id}/status`, {
+      status: row.status
+    })
+    
+    ElMessage.success(`用户${row.status === 'enabled' ? '启用' : '禁用'}成功`)
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('切换用户状态失败:', error)
+      // 恢复原状态
+      row.status = row.status === 'enabled' ? 'disabled' : 'enabled'
+      
+      if (error.response && error.response.data && error.response.data.message) {
+        ElMessage.error(error.response.data.message)
+      } else {
+        ElMessage.error('状态切换失败')
+      }
+    } else {
+      // 用户取消，恢复原状态
+      row.status = row.status === 'enabled' ? 'disabled' : 'enabled'
+    }
+  }
+}
+
 // 分页处理
 const handleSizeChange = (val) => {
   pageSize.value = val
@@ -273,6 +313,19 @@ onMounted(() => {
         <el-table-column label="角色" >
           <template #default="scope">
             <el-tag>{{ scope.row.roleName || '未知' }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态">
+          <template #default="scope">
+            <el-switch
+              v-model="scope.row.status"
+              active-value="enabled"
+              inactive-value="disabled"
+              active-text="启用"
+              inactive-text="禁用"
+              :disabled="!userStore.hasPermission('user:edit')"
+              @change="handleStatusChange(scope.row)"
+            />
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">

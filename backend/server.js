@@ -704,7 +704,8 @@ app.get('/api/admin/users', authMiddleware, (req, res) => {
     return {
       ...user,
       roleName: role ? role.name : '未知角色',
-      roleId: user.roleId
+      roleId: user.roleId,
+      status: user.status || 'enabled'
     };
   });
   
@@ -754,7 +755,8 @@ app.post('/api/admin/users', authMiddleware, (req, res) => {
     id: getNextUserId(),
     username,
     password,
-    roleId
+    roleId,
+    status: 'enabled'
   };
   
   db.users.push(newUser);
@@ -1121,6 +1123,38 @@ app.get('/api/admin/messages', authMiddleware, (req, res) => {
     limit: parseInt(limit),
     totalPages: Math.ceil(total / limit)
   });
+});
+
+// 切换用户状态
+app.put('/api/admin/users/:id/status', authMiddleware, (req, res) => {
+  if (!req.user.permissions.includes('user:edit')) {
+    return res.status(403).json({ message: '无编辑用户权限' });
+  }
+  
+  const { id } = req.params;
+  const { status } = req.body;
+  
+  const userIndex = db.users.findIndex(user => user.id.toString() === id.toString());
+  if (userIndex === -1) {
+    return res.status(404).json({ message: '用户不存在' });
+  }
+  
+  // 检查是否要禁用用户，且该用户是最后一个管理员用户
+  if (status === 'disabled' && db.users[userIndex].roleId === '1') {
+    // 查找其他启用的管理员用户
+    const otherEnabledAdminUsers = db.users.filter((user, index) => 
+      user.roleId === '1' && index !== userIndex && user.status === 'enabled'
+    );
+    
+    // 如果没有其他启用的管理员用户，则拒绝禁用
+    if (otherEnabledAdminUsers.length === 0) {
+      return res.status(400).json({ message: '系统必须至少保留一个启用的管理员用户' });
+    }
+  }
+  
+  db.users[userIndex].status = status;
+  saveDb();
+  res.json({ message: '用户状态更新成功', user: db.users[userIndex] });
 });
 
 // 静态文件服务，提供上传的文件访问

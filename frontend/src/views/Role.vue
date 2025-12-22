@@ -21,10 +21,10 @@
 
       <!-- 数据表格 -->
       <el-table :data="tableData" border style="width: 100%">
-        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="id" label="ID" />
         <el-table-column prop="name" label="角色名称" />
         <el-table-column prop="description" label="角色描述" />
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="status" label="状态">
           <template #default="scope">
             <el-switch
               v-model="scope.row.status"
